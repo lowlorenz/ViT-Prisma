@@ -7,7 +7,12 @@ from vit_prisma.sae.training.geometric_median import compute_geometric_median
 from vit_prisma.sae.training.get_scheduler import get_scheduler
 
 # from vit_prisma.sae.evals import run_evals_vision
-from vit_prisma.sae.evals.evals import get_substitution_loss, get_text_embeddings, get_text_embeddings_openclip, get_text_labels
+from vit_prisma.sae.evals.evals import (
+    get_substitution_loss,
+    get_text_embeddings,
+    get_text_embeddings_openclip,
+    get_text_labels,
+)
 
 from vit_prisma.dataloaders.imagenet_index import imagenet_index
 
@@ -77,12 +82,12 @@ class VisionSAETrainer:
         )
         if not self.cfg.wandb_project:
             self.cfg.wandb_project = (
-            self.cfg.model_name.replace("/", "-")
-            + "-expansion-"
-            + str(self.cfg.expansion_factor)
-            + "-layer-"
-            + str(self.cfg.hook_point_layer)
-        )
+                self.cfg.model_name.replace("/", "-")
+                + "-expansion-"
+                + str(self.cfg.expansion_factor)
+                + "-layer-"
+                + str(self.cfg.hook_point_layer)
+            )
         self.cfg.unique_hash = uuid.uuid4().hex[
             :8
         ]  # Generate a random 8-character hex string
@@ -348,7 +353,6 @@ class VisionSAETrainer:
             n_frac_active_tokens,
         )
 
-
     # layer_acts be a poor format - need to run in ctx_len, gt_labels format
     @torch.no_grad()
     def val(self, sparse_autoencoder):
@@ -357,16 +361,29 @@ class VisionSAETrainer:
             images = images.to(self.cfg.device)
             gt_labels = gt_labels.to(self.cfg.device)
             # needs to start with batch_size dimension
-            _, cache = self.model.run_with_cache(images, names_filter=sparse_autoencoder.cfg.hook_point)
-            hook_point_activation = cache[sparse_autoencoder.cfg.hook_point].to(self.cfg.device)
-            
-            sae_out, feature_acts, loss, mse_loss, l1_loss, _ = sparse_autoencoder(hook_point_activation)
+            _, cache = self.model.run_with_cache(
+                images, names_filter=sparse_autoencoder.cfg.hook_point
+            )
+            hook_point_activation = cache[sparse_autoencoder.cfg.hook_point].to(
+                self.cfg.device
+            )
 
+            sae_out, feature_acts, loss, mse_loss, l1_loss, _ = sparse_autoencoder(
+                hook_point_activation
+            )
 
             # Calculate cosine similarity between original activations and sae output
-            cos_sim = torch.cosine_similarity(einops.rearrange(hook_point_activation, "batch seq d_mlp -> (batch seq) d_mlp"),
-                                                                              einops.rearrange(sae_out, "batch seq d_mlp -> (batch seq) d_mlp"),
-                                                                                dim=0).mean(-1).tolist()
+            cos_sim = (
+                torch.cosine_similarity(
+                    einops.rearrange(
+                        hook_point_activation, "batch seq d_mlp -> (batch seq) d_mlp"
+                    ),
+                    einops.rearrange(sae_out, "batch seq d_mlp -> (batch seq) d_mlp"),
+                    dim=0,
+                )
+                .mean(-1)
+                .tolist()
+            )
             # all_cosine_similarity.append(cos_sim)
 
             # Calculate substitution loss
@@ -377,27 +394,45 @@ class VisionSAETrainer:
             if self.cfg.model_name.startswith("open-clip:"):
                 # create a list of all imagenet classes
                 num_imagenet_classes = 1000
-                batch_label_names = [imagenet_index[str(int(label))][1] for label in range(num_imagenet_classes)]
+                batch_label_names = [
+                    imagenet_index[str(int(label))][1]
+                    for label in range(num_imagenet_classes)
+                ]
 
-                model_name = self.cfg.model_name if not self.cfg.model_name.startswith("open-clip:") else self.cfg.model_name[10:]
+                model_name = (
+                    self.cfg.model_name
+                    if not self.cfg.model_name.startswith("open-clip:")
+                    else self.cfg.model_name[10:]
+                )
                 print(f"model_name: {model_name}")
                 # bad bad bad
-                oc_model_name = 'hf-hub:' + model_name
+                oc_model_name = "hf-hub:" + model_name
 
                 # should be moved to hookedvit pretrained long terms
-                og_model, _, preproc = open_clip.create_model_and_transforms(oc_model_name)
-                tokenizer = open_clip.get_tokenizer('ViT-B-32')
+                og_model, _, preproc = open_clip.create_model_and_transforms(
+                    oc_model_name
+                )
+                tokenizer = open_clip.get_tokenizer("ViT-B-32")
 
-                text_embeddings = get_text_embeddings_openclip(og_model, preproc, tokenizer, batch_label_names)
+                text_embeddings = get_text_embeddings_openclip(
+                    og_model, preproc, tokenizer, batch_label_names
+                )
                 # print(f"text_embeddings: {text_embeddings.shape}")
-                score, model_loss, sae_recon_loss, zero_abl_loss = get_substitution_loss(sparse_autoencoder, self.model, images, gt_labels, 
-                                                                          text_embeddings, device=self.cfg.device)
+                score, model_loss, sae_recon_loss, zero_abl_loss = (
+                    get_substitution_loss(
+                        sparse_autoencoder,
+                        self.model,
+                        images,
+                        gt_labels,
+                        text_embeddings,
+                        device=self.cfg.device,
+                    )
+                )
                 # log to w&b
                 # print(f"score: {score}")
                 # print(f"loss: {model_loss}")
                 # print(f"subst_loss: {sae_recon_loss}")
                 # print(f"zero_abl_loss: {zero_abl_loss}")
-
 
             # print(f"sae loss: {loss}")
             # print(f"sae loss.shape: {loss.shape}")
@@ -405,24 +440,23 @@ class VisionSAETrainer:
             # print(f"l1_loss: {l1_loss}")
             # print(f"l1_loss.shape: {l1_loss.shape}")
 
-            wandb.log({
-            # Original metrics
-            f"validation_losses/mse_loss": mse_loss,
-            f"validation_losses/substitution_score": score,
-            f"validation_losses/substitution_loss": sae_recon_loss,
-            
-            # # New image-level metrics
-            # f"metrics/mean_log10_per_image_sparsity{suffix}": per_image_log_sparsity.mean().item(),
-            # f"plots/log_per_image_sparsity_histogram{suffix}": image_log_sparsity_histogram,
-            # f"sparsity/images_below_1e-5{suffix}": (per_image_sparsity < 1e-5).sum().item(),
-            # f"sparsity/images_below_1e-6{suffix}": (per_image_sparsity < 1e-6).sum().item(),
-            })  
+            wandb.log(
+                {
+                    # Original metrics
+                    f"validation_losses/mse_loss": mse_loss,
+                    f"validation_losses/substitution_score": score,
+                    f"validation_losses/substitution_loss": sae_recon_loss,
+                    # # New image-level metrics
+                    # f"metrics/mean_log10_per_image_sparsity{suffix}": per_image_log_sparsity.mean().item(),
+                    # f"plots/log_per_image_sparsity_histogram{suffix}": image_log_sparsity_histogram,
+                    # f"sparsity/images_below_1e-5{suffix}": (per_image_sparsity < 1e-5).sum().item(),
+                    # f"sparsity/images_below_1e-6{suffix}": (per_image_sparsity < 1e-6).sum().item(),
+                }
+            )
 
             # log to w&b
             print(f"cos_sim: {cos_sim}")
             break
-            
-
 
     # def _log_feature_sparsity(self, sparse_autoencoder, hyperparams, log_feature_sparsity, feature_sparsity, n_training_steps):
     #     suffix = wandb_log_suffix(sparse_autoencoder.cfg, hyperparams)
@@ -692,8 +726,15 @@ class VisionSAETrainer:
                 n_frac_active_tokens=n_frac_active_tokens,
             )
 
-
-            if n_training_steps > 1 and n_training_steps % ((self.cfg.total_training_tokens//self.cfg.train_batch_size)//self.cfg.n_validation_runs) == 0:
+            if (
+                n_training_steps > 1
+                and n_training_steps
+                % (
+                    (self.cfg.total_training_tokens // self.cfg.train_batch_size)
+                    // self.cfg.n_validation_runs
+                )
+                == 0
+            ):
                 self.val(self.sae)
 
             n_training_steps += 1
@@ -708,11 +749,9 @@ class VisionSAETrainer:
                 self.checkpoint(
                     self.sae, n_training_tokens, act_freq_scores, n_frac_active_tokens
                 )
-
+                self.checkpoint_thresholds.pop(0)
                 if self.cfg.verbose:
                     print(f"Checkpoint saved at {n_training_tokens} tokens")
-
-                self.checkpoint_thresholds.pop(0)
 
             pbar.update(self.cfg.train_batch_size)
 
@@ -734,4 +773,3 @@ class VisionSAETrainer:
         pbar.close()
 
         return self.sae
-
