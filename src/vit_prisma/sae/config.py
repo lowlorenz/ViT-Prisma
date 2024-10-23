@@ -57,7 +57,7 @@ class RunnerConfig(ABC):
     dtype: torch.dtype = torch.float32
 
     def __post_init__(self):
-        if self.hook_point is not None:
+        if self.hook_point is None:
             self.hook_point = f"blocks.{self.hook_point_layer}.hook_mlp_out" # change hookpoint name here
 
         # Autofill cached_activations_path unless the user overrode it
