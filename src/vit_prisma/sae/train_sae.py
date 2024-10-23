@@ -706,7 +706,7 @@ class VisionSAETrainer:
         n_training_steps = 0
         n_training_tokens = 0
 
-        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
+        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE", mininterval=20)
         while n_training_tokens < self.cfg.total_training_tokens:
             layer_acts = self.activations_store.next_batch()
 
