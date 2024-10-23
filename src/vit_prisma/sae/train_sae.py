@@ -108,7 +108,7 @@ class VisionSAETrainer:
         if eval_dataset is None:
             raise ValueError("Eval dataset is None")
         return VisionActivationsStore(
-            self.cfg, self.model, dataset, eval_dataset=eval_dataset
+            self.cfg, self.model, dataset, eval_dataset=eval_dataset, num_workers=self.cfg.num_workers
         )
 
     def load_dataset(self, model_type="clip"):

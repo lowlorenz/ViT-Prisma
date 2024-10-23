@@ -207,12 +207,12 @@ def visualize_top_activations(
 
 @dataclass
 class EvalConfig(VisionModelSAERunnerConfig):
-    # sae_path: str = '/network/scratch/s/sonia.joseph/sae_checkpoints/1f89d99e-wkcn-TinyCLIP-ViT-40M-32-Text-19M-LAION400M-expansion-16/n_images_520028.pt'
+    sae_path: str = '/network/scratch/s/sonia.joseph/sae_checkpoints/1f89d99e-wkcn-TinyCLIP-ViT-40M-32-Text-19M-LAION400M-expansion-16/n_images_520028.pt'
     model_name: str = "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"
     model_type: str =  "clip"
     patch_size: str = 32
 
-    save_directory = "/network/scratch/s/sonia.joseph/sae_checkpoints/neuron_basis"
+    save_directory:str = "/network/scratch/s/sonia.joseph/sae_checkpoints/neuron_basis"
 
     dataset_path = "/network/scratch/s/sonia.joseph/datasets/kaggle_datasets"
     dataset_train_path: str = "/network/scratch/s/sonia.joseph/datasets/kaggle_datasets/ILSVRC/Data/CLS-LOC/train"

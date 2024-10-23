@@ -17,6 +17,7 @@ class RunnerConfig(ABC):
     # Data Generating Function (Model + Training Distibuion)
     model_class_name: str = "HookedViT"
     model_name: str = "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"
+    hook_point: Optional[str] = None
     hook_point_layer: int = 9
     hook_point_head_index: Optional[int] = None
     context_size: int = 50
@@ -56,7 +57,8 @@ class RunnerConfig(ABC):
     dtype: torch.dtype = torch.float32
 
     def __post_init__(self):
-        self.hook_point = f"blocks.{self.hook_point_layer}.hook_mlp_out" # change hookpoint name here
+        if self.hook_point is not None:
+            self.hook_point = f"blocks.{self.hook_point_layer}.hook_mlp_out" # change hookpoint name here
 
         # Autofill cached_activations_path unless the user overrode it
         if self.cached_activations_path is None:
@@ -99,7 +101,7 @@ class VisionModelSAERunnerConfig(RunnerConfig):
     )
     lr_warm_up_steps: int = 500
 
-    
+    num_workers: int = 16
     train_batch_size: int = 1024*4
 
     # Imagenet1k
