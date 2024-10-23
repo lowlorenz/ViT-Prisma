@@ -491,7 +491,6 @@ class VisionSAETrainer:
         log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
         torch.save(log_feature_sparsity, log_feature_sparsity_path)
 
-        self.checkpoint_thresholds.pop(0)
         if len(self.checkpoint_thresholds) == 0:
             n_checkpoints = 0
         if self.cfg.log_to_wandb:
@@ -589,17 +588,16 @@ class VisionSAETrainer:
             n_training_tokens += self.cfg.train_batch_size
 
             if (
-                self.cfg.n_checkpoints > 0
+                len(self.checkpoint_thresholds) > 0
                 and n_training_tokens > self.checkpoint_thresholds[0]
             ):
                 self.checkpoint(
                     self.sae, n_training_tokens, act_freq_scores, n_frac_active_tokens
                 )
-                (
+                self.checkpoint_thresholds.pop(0)
+                if self.cfg.verbose:
                     print(f"Checkpoint saved at {n_training_tokens} tokens")
-                    if self.cfg.verbose
-                    else None
-                )
+                    
 
             pbar.update(self.cfg.train_batch_size)
 
