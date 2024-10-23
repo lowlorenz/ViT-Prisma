@@ -154,7 +154,15 @@ class VisionSAETrainer:
                 data_transforms = get_clip_val_transforms(self.cfg.image_size)
             else:
                 raise ValueError("Invalid model type")
-            imagenet_paths = setup_imagenet_paths(self.cfg.dataset_path)
+            
+            # imagenet_paths = setup_imagenet_paths(self.cfg.dataset_path)
+
+            imagenet_paths = {
+                'train': os.path.join(self.cfg.dataset_path, "ILSVRC/Data/CLS-LOC/train"),
+                'val': os.path.join(self.cfg.dataset_path, "ILSVRC/Data/CLS-LOC/val"),
+                'val_labels': os.path.join("results", "LOC_val_solution.csv"),
+                'label_strings': os.path.join("results", "LOC_synset_mapping.txt")
+            }
 
             train_data = torchvision.datasets.ImageFolder(
                 self.cfg.dataset_train_path, transform=data_transforms
