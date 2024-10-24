@@ -243,6 +243,43 @@ class VisionSAETrainer:
         self.sae.train()
         return geometric_medians
 
+    def get_sae_grad_norm(self, sparse_autoencoder: SparseAutoencoder) -> float:
+        '''
+        Returns the norm of the gradients of the SAE. 
+        
+        Useful tool for debugging and monitoring the training process.
+
+        Args:
+            sparse_autoencoder: The SparseAutoencoder model
+
+        Returns:
+            The norm of the gradients of the SAE
+        '''
+        grads = [
+            param.grad.detach().flatten()
+            for param in sparse_autoencoder.parameters()
+            if param.grad is not None
+        ]
+        norm = torch.cat(grads).norm()
+        return norm
+
+    def postprocess_gradients(self, sparse_autoencoder: SparseAutoencoder) -> None:
+        '''
+        Postprocesses the gradients of the SAE.
+
+        Removes the gradient parallel to the decoder directions and clips the gradients 
+        if specified in the config.
+
+        Args:
+            sparse_autoencoder: The SparseAutoencoder model
+        '''
+        if self.cfg.max_grad_norm:  # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(
+                sparse_autoencoder.parameters(), max_norm=self.cfg.max_grad_norm
+            )
+
+        sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+
     def train_step(
         self,
         sparse_autoencoder,
@@ -306,6 +343,17 @@ class VisionSAETrainer:
             aux_reconstruction_loss,
         ) = sparse_autoencoder(sae_in, ghost_grad_neuron_mask)
 
+        # calculate the gradient norms
+        optimizer.zero_grad()
+        mse_loss.backward(retain_graph=True)
+        self.postprocess_gradients(sparse_autoencoder)
+        mse_grad_norm = self.get_sae_grad_norm()
+
+        optimizer.zero_grad()
+        l1_loss.backward(retain_graph=True)
+        self.postprocess_gradients(sparse_autoencoder)
+        l1_grad_norm = self.get_sae_grad_norm()
+
         with torch.no_grad():
             did_fire = (feature_acts > 0).float().sum(-2) > 0
             n_forward_passes_since_fired += 1
@@ -336,19 +384,15 @@ class VisionSAETrainer:
                     l0,
                     n_training_steps,
                     n_training_tokens,
+                    mse_grad_norm,
+                    l1_grad_norm,
                 )
 
             # if self.cfg.log_to_wandb and ((n_training_steps + 1) % (self.cfg.wandb_log_frequency * 10) == 0):
             #     self._run_evals(sparse_autoencoder, hyperparams, n_training_steps)
 
         loss.backward()
-
-        if self.cfg.max_grad_norm:  # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(
-                sparse_autoencoder.parameters(), max_norm=self.cfg.max_grad_norm
-            )
-
-        sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+        self.postprocess_gradients(sparse_autoencoder)
         optimizer.step()
 
         return (
@@ -556,6 +600,8 @@ class VisionSAETrainer:
         l0,
         n_training_steps,
         n_training_tokens,
+        mse_grad_norm,
+        l1_grad_norm,
     ):
         current_learning_rate = optimizer.param_groups[0]["lr"]
         per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=-1).squeeze()
@@ -591,6 +637,8 @@ class VisionSAETrainer:
             f"details/current_learning_rate{suffix}": current_learning_rate,
             "details/n_training_tokens": n_training_tokens,
             "details/n_training_images": n_training_images,
+            "grads/mse_grad_norm": mse_grad_norm,
+            "grads/l1_grad_norm": l1_grad_norm,
         }
 
         if self.cfg.architecture == "gated":
