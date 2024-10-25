@@ -93,6 +93,7 @@ class VisionModelSAERunnerConfig(RunnerConfig):
     """
 
     architecture: Literal["standard", "gated", "jumprelu"] = "standard"
+    sparsity_loss: Literal["l1", "reparameterisation-invariant-l1"] = "l1"
 
     # Logging
     verbose: bool = False

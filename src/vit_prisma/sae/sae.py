@@ -375,9 +375,26 @@ class SparseAutoencoder(HookedRootModule):
             mse_loss_ghost_resid = self.zero_loss
 
         mse_loss = mse_loss.mean()
-        sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
 
         if self.cfg.architecture == "standard":
+
+            if self.cfg.sparsity_loss == "l1":
+                sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(
+                    dim=(0,)
+                )  # (tokens, features)
+            elif self.cfg.sparsity_loss == "reparameterisation-invariant-l1":
+                # see https://arxiv.org/pdf/2407.14435 formular 6
+                dir_norms = torch.norm(self.W_dec.data, p=2, dim=1)
+                normalized_features = feature_acts * dir_norms
+                sparsity = normalized_features.norm(p=self.lp_norm, dim=1).mean(
+                    dim=(0,)
+                )
+
+            else:
+                raise ValueError(
+                    f"Unknown sparsity loss: {self.cfg.sparsity_loss} for a standard SAE"
+                )
+
             aux_reconstruction_loss = torch.tensor(0.0)
 
             if self.cfg.activation_fn_str != "topk":
@@ -501,6 +518,10 @@ class SparseAutoencoder(HookedRootModule):
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
+
+        # TODO better handling
+        if self.cfg.sparsity_loss == "reparameterisation-invariant-l1":
+            return
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
     @torch.no_grad()
