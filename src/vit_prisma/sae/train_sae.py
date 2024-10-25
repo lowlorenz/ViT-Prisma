@@ -154,14 +154,16 @@ class VisionSAETrainer:
                 data_transforms = get_clip_val_transforms(self.cfg.image_size)
             else:
                 raise ValueError("Invalid model type")
-            
+
             # imagenet_paths = setup_imagenet_paths(self.cfg.dataset_path)
 
             imagenet_paths = {
-                'train': os.path.join(self.cfg.dataset_path, "ILSVRC/Data/CLS-LOC/train"),
-                'val': os.path.join(self.cfg.dataset_path, "ILSVRC/Data/CLS-LOC/val"),
-                'val_labels': os.path.join("results", "LOC_val_solution.csv"),
-                'label_strings': os.path.join("results", "LOC_synset_mapping.txt")
+                "train": os.path.join(
+                    self.cfg.dataset_path, "ILSVRC/Data/CLS-LOC/train"
+                ),
+                "val": os.path.join(self.cfg.dataset_path, "ILSVRC/Data/CLS-LOC/val"),
+                "val_labels": os.path.join("results", "LOC_val_solution.csv"),
+                "label_strings": os.path.join("results", "LOC_synset_mapping.txt"),
             }
 
             train_data = torchvision.datasets.ImageFolder(
@@ -244,9 +246,9 @@ class VisionSAETrainer:
         return geometric_medians
 
     def get_sae_grad_norm(self, sparse_autoencoder: SparseAutoencoder) -> float:
-        '''
-        Returns the norm of the gradients of the SAE. 
-        
+        """
+        Returns the norm of the gradients of the SAE.
+
         Useful tool for debugging and monitoring the training process.
 
         Args:
@@ -254,7 +256,7 @@ class VisionSAETrainer:
 
         Returns:
             The norm of the gradients of the SAE
-        '''
+        """
         grads = [
             param.grad.detach().flatten()
             for param in sparse_autoencoder.parameters()
@@ -263,22 +265,25 @@ class VisionSAETrainer:
         norm = torch.cat(grads).norm()
         return norm
 
-    def postprocess_gradients(self, sparse_autoencoder: SparseAutoencoder) -> None:
-        '''
+    def postprocess_gradients(
+        self, sparse_autoencoder: SparseAutoencoder, remove_parallel_gradients=True
+    ) -> None:
+        """
         Postprocesses the gradients of the SAE.
 
-        Removes the gradient parallel to the decoder directions and clips the gradients 
+        Removes the gradient parallel to the decoder directions and clips the gradients
         if specified in the config.
 
         Args:
             sparse_autoencoder: The SparseAutoencoder model
-        '''
+        """
         if self.cfg.max_grad_norm:  # Gradient clipping
             torch.nn.utils.clip_grad_norm_(
                 sparse_autoencoder.parameters(), max_norm=self.cfg.max_grad_norm
             )
 
-        sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+        if remove_parallel_gradients:
+            sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
 
     def train_step(
         self,
@@ -347,12 +352,16 @@ class VisionSAETrainer:
         optimizer.zero_grad()
         mse_loss.backward(retain_graph=True)
         self.postprocess_gradients(sparse_autoencoder)
-        mse_grad_norm = self.get_sae_grad_norm()
+        mse_grad_norm = self.get_sae_grad_norm(
+            sparse_autoencoder, remove_parallel_gradients=False
+        )
 
         optimizer.zero_grad()
         l1_loss.backward(retain_graph=True)
         self.postprocess_gradients(sparse_autoencoder)
-        l1_grad_norm = self.get_sae_grad_norm()
+        l1_grad_norm = self.get_sae_grad_norm(
+            sparse_autoencoder, remove_parallel_gradients=False
+        )
 
         with torch.no_grad():
             did_fire = (feature_acts > 0).float().sum(-2) > 0
@@ -754,7 +763,9 @@ class VisionSAETrainer:
         n_training_steps = 0
         n_training_tokens = 0
 
-        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE", mininterval=20)
+        pbar = tqdm(
+            total=self.cfg.total_training_tokens, desc="Training SAE", mininterval=20
+        )
         while n_training_tokens < self.cfg.total_training_tokens:
             layer_acts = self.activations_store.next_batch()
 
