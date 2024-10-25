@@ -351,17 +351,13 @@ class VisionSAETrainer:
         # calculate the gradient norms
         optimizer.zero_grad()
         mse_loss.backward(retain_graph=True)
-        self.postprocess_gradients(sparse_autoencoder)
-        mse_grad_norm = self.get_sae_grad_norm(
-            sparse_autoencoder, remove_parallel_gradients=False
-        )
+        self.postprocess_gradients(sparse_autoencoder, remove_parallel_gradients=False)
+        mse_grad_norm = self.get_sae_grad_norm(sparse_autoencoder)
 
         optimizer.zero_grad()
         l1_loss.backward(retain_graph=True)
-        self.postprocess_gradients(sparse_autoencoder)
-        l1_grad_norm = self.get_sae_grad_norm(
-            sparse_autoencoder, remove_parallel_gradients=False
-        )
+        self.postprocess_gradients(sparse_autoencoder, remove_parallel_gradients=False)
+        l1_grad_norm = self.get_sae_grad_norm(sparse_autoencoder)
 
         with torch.no_grad():
             did_fire = (feature_acts > 0).float().sum(-2) > 0
