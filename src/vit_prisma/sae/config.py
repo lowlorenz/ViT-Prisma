@@ -15,6 +15,7 @@ class RunnerConfig(ABC):
     # Data Generating Function (Model + Training Distibuion)
     model_class_name: str = "HookedViT"
     model_name: str = "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"
+    hook_point: Optional[str] = None
     hook_point_layer: int = 9
     layer_subtype: str = "hook_resid_post"
     hook_point_head_index: Optional[int] = None
@@ -111,6 +112,7 @@ class VisionModelSAERunnerConfig(RunnerConfig):
     )
     lr_warm_up_steps: int = 500
 
+    num_workers: int = 16
     train_batch_size: int = 1024 * 4
 
     # Imagenet1k
@@ -137,7 +139,7 @@ class VisionModelSAERunnerConfig(RunnerConfig):
     wandb_log_frequency: int = 10
 
     # Misc
-    n_validation_runs: int = 4 # spaced linearly throughout training
+    n_validation_runs: int = 4  # spaced linearly throughout training
     n_checkpoints: int = 10
     checkpoint_path: str = (
         "/network/scratch/s/sonia.joseph/sae_checkpoints/tinyclip_40M_mlp_out"
