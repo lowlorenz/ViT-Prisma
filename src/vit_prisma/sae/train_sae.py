@@ -696,7 +696,8 @@ class VisionSAETrainer:
 
         # Save log feature sparsity
         log_feature_sparsity_path = (
-            checkpoint_path + f"/n_images_{n_training_images}_log_feature_sparsity.pt"
+            self.cfg.checkpoint_path
+            + f"/n_images_{n_training_images}_log_feature_sparsity.pt"
         )
         feature_sparsity = act_freq_scores / n_frac_active_tokens
         log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
@@ -750,7 +751,11 @@ class VisionSAETrainer:
                 project=wandb_project,
                 config=config_dict,
                 entity=self.cfg.wandb_entity,
+<<<<<<< HEAD
                 name=run_name,
+=======
+                # name=self.cfg.run_name,
+>>>>>>> 99dfa0c (✨ config saving and loading)
             )
 
             self.cfg.unique_hash = wandb.run.name
