@@ -112,6 +112,8 @@ class VisionModelSAERunnerConfig(RunnerConfig):
         "cosineannealingwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
     )
     lr_warm_up_steps: int = 500
+    beta1: float = 0.9
+    beta2: float = 0.999
 
     num_workers: int = 16
     train_batch_size: int = 1024 * 4

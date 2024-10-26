@@ -213,7 +213,11 @@ class VisionSAETrainer:
             int(self.cfg.d_sae), device=self.cfg.device
         )
         n_frac_active_tokens = 0
-        optimizers = Adam(self.sae.parameters(), lr=self.cfg.lr)
+        optimizers = Adam(
+            self.sae.parameters(),
+            lr=self.cfg.lr,
+            betas=(self.cfg.beta1, self.cfg.beta2),
+        )
         scheduler = get_scheduler(
             self.cfg.lr_scheduler_name,
             optimizer=optimizers,
