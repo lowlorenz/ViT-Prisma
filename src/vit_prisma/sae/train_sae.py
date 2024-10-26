@@ -80,6 +80,7 @@ class VisionSAETrainer:
         self.activations_store = self.initialize_activations_store(
             dataset, eval_dataset
         )
+<<<<<<< HEAD
         if not self.cfg.wandb_project:
             self.cfg.wandb_project = (
                 self.cfg.model_name.replace("/", "-")
@@ -92,9 +93,17 @@ class VisionSAETrainer:
             :8
         ]  # Generate a random 8-character hex string
         self.cfg.run_name = self.cfg.unique_hash + "-" + self.cfg.wandb_project
+=======
+        self.cfg.wandb_project = (
+            self.cfg.model_name.replace("/", "-")
+            + "-expansion-"
+            + str(self.cfg.expansion_factor)
+            + "-layer-"
+            + str(self.cfg.hook_point_layer)
+        )
+>>>>>>> dbf7ec6 (✨ checkpoint name synced with wandb run name)
 
         self.checkpoint_thresholds = self.get_checkpoint_thresholds()
-        self.setup_checkpoint_path()
 
         self.cfg.pretty_print() if self.cfg.verbose else None
 
@@ -687,8 +696,7 @@ class VisionSAETrainer:
 
         # Save log feature sparsity
         log_feature_sparsity_path = (
-            self.cfg.checkpoint_path
-            + f"/n_images_{n_training_images}_log_feature_sparsity.pt"
+            checkpoint_path + f"/n_images_{n_training_images}_log_feature_sparsity.pt"
         )
         feature_sparsity = act_freq_scores / n_frac_active_tokens
         log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
@@ -744,6 +752,15 @@ class VisionSAETrainer:
                 entity=self.cfg.wandb_entity,
                 name=run_name,
             )
+
+            self.cfg.unique_hash = wandb.run.name
+        else:
+            self.cfg.unique_hash = uuid.uuid4().hex[
+                :8
+            ]  # Generate a random 8-character hex string
+
+        self.cfg.run_name = self.cfg.unique_hash + "-" + self.cfg.wandb_project
+        self.setup_checkpoint_path()
 
         (
             act_freq_scores,
