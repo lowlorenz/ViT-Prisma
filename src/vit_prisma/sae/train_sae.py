@@ -686,7 +686,8 @@ class VisionSAETrainer:
 
         # Save log feature sparsity
         log_feature_sparsity_path = (
-            checkpoint_path + f"/n_images_{n_training_images}_log_feature_sparsity.pt"
+            self.cfg.checkpoint_path
+            + f"/n_images_{n_training_images}_log_feature_sparsity.pt"
         )
         feature_sparsity = act_freq_scores / n_frac_active_tokens
         log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
