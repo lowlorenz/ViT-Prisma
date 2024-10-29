@@ -799,16 +799,16 @@ class VisionSAETrainer:
                 n_frac_active_tokens=n_frac_active_tokens,
             )
 
-            if (
-                n_training_steps > 1
-                and n_training_steps
-                % (
-                    (self.cfg.total_training_tokens // self.cfg.train_batch_size)
-                    // self.cfg.n_validation_runs
-                )
-                == 0
-            ):
-                self.val(self.sae)
+            # if (
+            #     n_training_steps > 1
+            #     and n_training_steps
+            #     % (
+            #         (self.cfg.total_training_tokens // self.cfg.train_batch_size)
+            #         // self.cfg.n_validation_runs
+            #     )
+            #     == 0
+            # ):
+            #     self.val(self.sae)
 
             n_training_steps += 1
             n_training_tokens += self.cfg.train_batch_size
