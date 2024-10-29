@@ -222,22 +222,7 @@ class SparseAutoencoder(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
 
-        sae_in = self.run_time_activation_norm_fn_in(x)
-
-        sae_in = self.hook_sae_in(
-            x - self.b_dec
-        )  # Remove decoder bias as per Anthropic
-
-        hidden_pre = self.hook_hidden_pre(
-            einops.einsum(
-                sae_in,
-                self.W_enc,
-                "... d_in, d_in d_sae -> ... d_sae",
-            )
-            + self.b_enc
-        )
-
-        feature_acts = self.hook_hidden_post(self.activation_fn(hidden_pre))
+        feature_acts = self.encode_standard(x)
 
         feature_acts[:, :, feature_id] *= steer_value
 
@@ -257,22 +242,7 @@ class SparseAutoencoder(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
 
-        sae_in = self.run_time_activation_norm_fn_in(x)
-
-        sae_in = self.hook_sae_in(
-            x - self.b_dec
-        )  # Remove decoder bias as per Anthropic
-
-        hidden_pre = self.hook_hidden_pre(
-            einops.einsum(
-                sae_in,
-                self.W_enc,
-                "... d_in, d_in d_sae -> ... d_sae",
-            )
-            + self.b_enc
-        )
-
-        feature_acts = self.hook_hidden_post(self.activation_fn(hidden_pre))
+        feature_acts = self.encode_standard(x)
 
         feature_acts[:, :, feature_id] = ablation_value
 
@@ -672,15 +642,17 @@ class SparseAutoencoder(HookedRootModule):
         1. A single weights_path containing both config and weights (legacy format)
         2. Separate config_path and weights_path
         3. HuggingFace-style paths
-        
+
         Args:
             weights_path (str): Path to weights file or HuggingFace repo ID
             config_path (str, optional): Path to config.json file. If None, will look for config in weights_path
             current_cfg: Optional configuration to override loaded settings
         """
+
         def load_config_from_json(config_path):
             """Helper to load and parse config from JSON."""
             from vit_prisma.sae.config import VisionModelSAERunnerConfig
+
             return VisionModelSAERunnerConfig.load_config(config_path)
 
         def load_weights(path, device=None):
@@ -718,21 +690,25 @@ class SparseAutoencoder(HookedRootModule):
             raise ValueError(f"Unexpected file extension: {weights_path}")
 
         # Check if this is legacy format (combined config and weights)
-        is_legacy = isinstance(state_dict, dict) and "cfg" in state_dict and "state_dict" in state_dict
+        is_legacy = (
+            isinstance(state_dict, dict)
+            and "cfg" in state_dict
+            and "state_dict" in state_dict
+        )
 
-        if is_legacy and config_path is None:
+        if is_legacy:  # and config_path is None:
             # Use config from legacy file
             loaded_cfg = state_dict["cfg"]
             weights = state_dict["state_dict"]
         else:
             # Handle separate config and weights
-                # Look for config.json in same directory as weights
+            # Look for config.json in same directory as weights
             config_path = os.path.join(os.path.dirname(weights_path), "config.json")
             if not os.path.isfile(config_path):
                 raise FileNotFoundError(
                     f"No config file found at {config_path} and no legacy format detected"
                 )
-        
+
             # Load config and weights separately
             loaded_cfg = load_config_from_json(config_path)
             weights = state_dict if not is_legacy else state_dict["state_dict"]
@@ -755,7 +731,7 @@ class SparseAutoencoder(HookedRootModule):
 
         # Update loaded config with current config if provided
         if current_cfg is not None:
-            for key, value in vars(current_cfg).items():
+            for key, value in zip(current_cfg.keys(), current_cfg.values()):
                 if hasattr(loaded_cfg, key):
                     setattr(loaded_cfg, key, value)
 
