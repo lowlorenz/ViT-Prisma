@@ -169,10 +169,12 @@ class VisionSAETrainer:
                 self.cfg.dataset_train_path, transform=data_transforms
             )
             val_data = ImageNetValidationDataset(
-                self.cfg.dataset_val_path,
-                imagenet_paths["label_strings"],
-                imagenet_paths["val_labels"],
-                data_transforms,
+                self.cfg.dataset_path,
+                split="val",
+                transform=data_transforms,
+                # imagenet_paths["label_strings"],
+                # imagenet_paths["val_labels"],
+                # data_transforms,
             )
             print(f"Train data length: {len(train_data)}") if self.cfg.verbose else None
             (
@@ -424,7 +426,7 @@ class VisionSAETrainer:
                 self.cfg.device
             )
 
-            sae_out, feature_acts, loss, mse_loss, l1_loss, _ = sparse_autoencoder(
+            sae_out, feature_acts, loss, mse_loss, l1_loss, *_ = sparse_autoencoder(
                 hook_point_activation
             )
 
