@@ -222,7 +222,7 @@ class SparseAutoencoder(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
 
-        feature_acts = self.encode_standard(x)
+        _, feature_acts = self.encode_gated(x)
 
         feature_acts[:, :, feature_id] *= steer_value
 
@@ -242,7 +242,7 @@ class SparseAutoencoder(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
 
-        feature_acts = self.encode_standard(x)
+        _, feature_acts = self.encode_gated(x)
 
         feature_acts[:, :, feature_id] = ablation_value
 
