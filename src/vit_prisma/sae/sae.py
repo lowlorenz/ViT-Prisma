@@ -218,11 +218,11 @@ class SparseAutoencoder(HookedRootModule):
 
     from line_profiler import profile
 
-    def steer(self, x: torch.Tensor, feature_id: int, steer_value: float):
+    def mulitply(self, x: torch.Tensor, feature_id: int, steer_value: float):
         # move x to correct dtype
         x = x.to(self.dtype)
 
-        _, feature_acts = self.encode_gated(x)
+        feature_acts = self.encode_standard(x)
 
         feature_acts[:, :, feature_id] *= steer_value
 
@@ -238,11 +238,11 @@ class SparseAutoencoder(HookedRootModule):
         sae_out = self.run_time_activation_norm_fn_out(sae_out)
         return feature_acts, sae_out
 
-    def ablate(self, x: torch.Tensor, feature_id: int, ablation_value: float):
+    def replace(self, x: torch.Tensor, feature_id: int, ablation_value: float):
         # move x to correct dtype
         x = x.to(self.dtype)
 
-        _, feature_acts = self.encode_gated(x)
+        feature_acts = self.encode_standard(x)
 
         feature_acts[:, :, feature_id] = ablation_value
 
